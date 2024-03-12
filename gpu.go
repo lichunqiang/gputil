@@ -15,7 +15,7 @@ import (
 const binary = "nvidia-smi"
 
 const (
-	queryInfo    = "--query-gpu=index,uuid,utilization.gpu,memory.total,memory.used,memory.free,driver_version,name,gpu_serial,display_active,display_mode,temperature.gpu,timestamp"
+	queryInfo    = "--query-gpu=index,uuid,utilization.gpu,memory.total,memory.used,memory.free,driver_version,name,gpu_serial,power.draw,power.limit,temperature.gpu,timestamp"
 	queryProcess = "--query-compute-apps=timestamp,gpu_name,gpu_uuid,pid,name,used_memory"
 	queryFormat  = "--format=csv,noheader,nounits"
 )
@@ -43,13 +43,14 @@ type GPU struct {
 	Name string `json:"name"`
 	// This number matches the serial number physically printed on each board. It is a globally unique immutable alphanumeric value.
 	Serial string `json:"serial"`
-	// A flag that indicates whether a display is initialized on the GPU's (e.g. memory is allocated on the device for display).
-	// Display can be active even when no monitor is physically attached.
-	// "Enabled" indicates an active display. "Disabled" indicates otherwise.
-	DisplayActive string `json:"displayActive"`
-	// A flag that indicates whether a physical display (e.g. monitor) is currently connected to any of the GPU's connectors.
-	// "Enabled" indicates an attached display. "Disabled" indicates otherwise.
-	DisplayMode string `json:"displayMode"`
+	// The last measured power draw for the entire board, in watts.
+	// On Ampere or newer devices, returns average power draw over 1 sec.
+	// On older devices, returns instantaneous power draw. Only available if power management is supported.
+	// This reading is accurate to within +/- 5 watts.
+	PowerDraw string `json:"powerDraw"`
+	// The software power limit in watts. Set by software like nvidia-smi.
+	// On Kepler devices Power Limit can be adjusted using [-pl | --power-limit=] switches.
+	PowerLimit string `json:"powerLimit"`
 	// Core GPU temperature. in degrees C.
 	Temperature string `json:"temperature"`
 	// The timestamp of when the query was made in format "YYYY/MM/DD HH:MM:SS.msec".
@@ -153,8 +154,8 @@ func composeGPUInfoLines(rsp []byte) (result []GPU, err error) {
 			DriverVersion:  sanitize(line[6]),
 			Name:           sanitize(line[7]),
 			Serial:         sanitize(line[8]),
-			DisplayActive:  sanitize(line[9]),
-			DisplayMode:    sanitize(line[10]),
+			PowerDraw:      sanitize(line[9]),
+			PowerLimit:     sanitize(line[10]),
 			Temperature:    sanitize(line[11]),
 			Timestamp:      sanitize(line[12]),
 		})
@@ -181,7 +182,7 @@ func parse(content []byte) (lines [][]string, err error) {
 
 func (g *GPU) String() string {
 	return fmt.Sprintf(
-		"%s, %s, %s %%, %s MiB, %s MiB, %s MiB, %s, %s, %s, %s, %s, %s, %s",
+		"%s, %s, %s %%, %s MiB, %s MiB, %s MiB, %s, %s, %s, %s W, %s W, %s, %s",
 		g.Index,
 		g.UUID,
 		g.UtilizationGPU,
@@ -191,8 +192,8 @@ func (g *GPU) String() string {
 		g.DriverVersion,
 		g.Name,
 		g.Serial,
-		g.DisplayActive,
-		g.DisplayMode,
+		g.PowerDraw,
+		g.PowerLimit,
 		g.Temperature,
 		g.Timestamp,
 	)
