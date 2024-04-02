@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"os/exec"
 	"strings"
@@ -96,7 +96,7 @@ func GetProcesses(ctx context.Context, indexOrUUIDs ...string) (result []GPUComp
 	var rsp []byte
 	var args = []string{queryProcess, queryFormat}
 	if len(indexOrUUIDs) > 0 {
-		args = append(args, fmt.Sprintf("-i %s", strings.Join(indexOrUUIDs, ",")))
+		args = append(args, fmt.Sprintf("--id=%s", strings.Join(indexOrUUIDs, ",")))
 	}
 	if rsp, err = run(ctx, args...); err != nil {
 		return
@@ -128,7 +128,7 @@ func run(ctx context.Context, args ...string) (rsp []byte, err error) {
 	cmd := exec.CommandContext(ctx, binary, args...)
 	if rsp, err = cmd.Output(); err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
-			err = ee
+			err = errors.WithMessagef(ee, "execute output: %s", rsp)
 			return
 		}
 		return
