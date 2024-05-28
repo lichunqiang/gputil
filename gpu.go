@@ -12,7 +12,12 @@ import (
 )
 
 // the binary should be executable
-const binary = "nvidia-smi"
+var binary = "nvidia-smi"
+
+// SetBinaryPath set the path of nvidia-smi
+func SetBinaryPath(path string) {
+	binary = path
+}
 
 const (
 	queryInfo    = "--query-gpu=index,uuid,utilization.gpu,memory.total,memory.used,memory.free,driver_version,name,gpu_serial,power.draw,power.limit,temperature.gpu,timestamp"
